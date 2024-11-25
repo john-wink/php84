@@ -1,0 +1,52 @@
+name: Deploy to Vapor
+on:
+  push:
+    branches:
+      - production
+      - production-arm
+jobs:
+  deploy-development-to-vapor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.4
+          tools: composer:v2
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 21
+
+      - name: Add HTTP basic auth credentials
+        run: echo '${{ secrets.COMPOSER_AUTH }}' > $GITHUB_WORKSPACE/auth.json
+
+      - name: Install NPM Packages
+        run: npm ci
+
+      - name: Install Composer dependencies
+        run: composer install --no-scripts --prefer-dist --no-interaction --no-dev
+
+      - name: Build Vite Assets
+        run: npm run build
+
+      - name: Require Vapor CLI
+        run: composer global require laravel/vapor-cli
+
+      - name: Install Composer dependencies with dev Dependencies
+        run: composer install --prefer-dist --no-interaction
+
+      - name: Deploy ${{ github.ref_name }} ${{ matrix.superteam }}
+        uses: nick-fields/retry@v3
+        with:
+          timeout_seconds: 360
+          max_attempts: 1
+          command: vapor deploy ${{ github.ref_name }} --commit="${{ github.event.head_commit.id }}" --message="${{ github.event.head_commit.message }}" --without-waiting
+        env:
+          VAPOR_API_TOKEN: ${{ secrets.VAPOR }}
+          GITHUB_SECRET: ${{ secrets.GITHUB }}
