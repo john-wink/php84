@@ -49,4 +49,3 @@ jobs:
           command: vapor deploy ${{ github.ref_name }} --commit="${{ github.event.head_commit.id }}" --message="${{ github.event.head_commit.message }}" --without-waiting
         env:
           VAPOR_API_TOKEN: ${{ secrets.VAPOR }}
-          GITHUB_SECRET: ${{ secrets.GITHUB }}
